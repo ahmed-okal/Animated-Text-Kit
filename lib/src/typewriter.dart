@@ -1,10 +1,11 @@
+import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:flutter/material.dart';
-import 'animated_text.dart';
 
-/// Animated Text that displays a [Text] element as if it is being typed one
-/// character at a time. Similar to [TyperAnimatedText], but shows a cursor.
+/// Custom Animated Text that displays a [Text] element as if it is being typed one
+/// character at a time with support for styling untyped text.
 ///
-/// ![Typewriter example](https://raw.githubusercontent.com/aagarwal1012/Animated-Text-Kit/master/display/typewriter.gif)
+/// This extends the standard TypewriterAnimatedText to show the remaining
+/// (not yet typed) text with a custom style.
 class TypewriterAnimatedText extends AnimatedText {
   // The text length is padded to cause extra cursor blinking after typing.
   static const extraLengthForBlinks = 8;
@@ -22,6 +23,10 @@ class TypewriterAnimatedText extends AnimatedText {
   /// Cursor text. Defaults to underscore.
   final String cursor;
 
+  /// Text style for the untyped (remaining) text.
+  /// If null, the remaining text will not be shown.
+  final TextStyle? untypedTextStyle;
+
   TypewriterAnimatedText(
     String text, {
     TextAlign textAlign = TextAlign.start,
@@ -29,6 +34,7 @@ class TypewriterAnimatedText extends AnimatedText {
     this.speed = const Duration(milliseconds: 30),
     this.curve = Curves.linear,
     this.cursor = '_',
+    this.untypedTextStyle,
   }) : super(
           text: text,
           textAlign: textAlign,
@@ -65,7 +71,7 @@ class TypewriterAnimatedText extends AnimatedText {
         textAlign: textAlign,
       );
 
-  /// Widget showing partial text
+  /// Widget showing partial text with styled remaining text
   @override
   Widget animatedBuilder(BuildContext context, Widget? child) {
     /// Output of CurveTween is in the range [0, 1] for majority of the curves.
@@ -77,85 +83,44 @@ class TypewriterAnimatedText extends AnimatedText {
 
     var showCursor = true;
     var visibleString = text;
+    String remainingString = '';
+
     if (typewriterValue == 0) {
       visibleString = '';
+      remainingString = text;
       showCursor = false;
     } else if (typewriterValue > textLen) {
       showCursor = (typewriterValue - textLen) % 2 == 0;
+      remainingString = '';
     } else {
       visibleString = textCharacters.take(typewriterValue).toString();
+      remainingString = textCharacters.skip(typewriterValue).toString();
     }
 
     return RichText(
       text: TextSpan(
         children: [
-          TextSpan(text: visibleString),
+          // Typed (visible) text
+          TextSpan(
+            text: visibleString,
+            style: DefaultTextStyle.of(context).style.merge(textStyle),
+          ),
+          // Cursor
           TextSpan(
             text: cursor,
-            style:
-                showCursor ? null : const TextStyle(color: Colors.transparent),
-          )
+            style: showCursor
+                ? DefaultTextStyle.of(context).style.merge(textStyle)
+                : const TextStyle(color: Colors.transparent),
+          ),
+          // Remaining (untyped) text - only shown if untypedTextStyle is provided
+          if (untypedTextStyle != null && remainingString.isNotEmpty)
+            TextSpan(
+              text: remainingString,
+              style: DefaultTextStyle.of(context).style.merge(untypedTextStyle),
+            ),
         ],
-        style: DefaultTextStyle.of(context).style.merge(textStyle),
       ),
       textAlign: textAlign,
     );
   }
-}
-
-/// Animation that displays [text] elements, as if they are being typed one
-/// character at a time. Similar to [TyperAnimatedTextKit], but shows a cursor.
-///
-/// ![Typewriter example](https://raw.githubusercontent.com/aagarwal1012/Animated-Text-Kit/master/display/typewriter.gif)
-@Deprecated('Use AnimatedTextKit with TypewriterAnimatedText instead.')
-class TypewriterAnimatedTextKit extends AnimatedTextKit {
-  TypewriterAnimatedTextKit({
-    Key? key,
-    required List<String> text,
-    TextAlign textAlign = TextAlign.start,
-    required TextStyle textStyle,
-    Duration speed = const Duration(milliseconds: 30),
-    Duration pause = const Duration(milliseconds: 1000),
-    bool displayFullTextOnTap = false,
-    bool stopPauseOnTap = false,
-    VoidCallback? onTap,
-    void Function(int, bool)? onNext,
-    void Function(int, bool)? onNextBeforePause,
-    VoidCallback? onFinished,
-    bool isRepeatingAnimation = true,
-    bool repeatForever = true,
-    int totalRepeatCount = 3,
-    Curve curve = Curves.linear,
-  }) : super(
-          key: key,
-          animatedTexts:
-              _animatedTexts(text, textAlign, textStyle, speed, curve),
-          pause: pause,
-          displayFullTextOnTap: displayFullTextOnTap,
-          stopPauseOnTap: stopPauseOnTap,
-          onTap: onTap,
-          onNext: onNext,
-          onNextBeforePause: onNextBeforePause,
-          onFinished: onFinished,
-          isRepeatingAnimation: isRepeatingAnimation,
-          repeatForever: repeatForever,
-          totalRepeatCount: totalRepeatCount,
-        );
-
-  static List<AnimatedText> _animatedTexts(
-    List<String> text,
-    TextAlign textAlign,
-    TextStyle textStyle,
-    Duration speed,
-    Curve curve,
-  ) =>
-      text
-          .map((text) => TypewriterAnimatedText(
-                text,
-                textAlign: textAlign,
-                textStyle: textStyle,
-                speed: speed,
-                curve: curve,
-              ))
-          .toList();
 }
